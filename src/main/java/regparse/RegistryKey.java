@@ -29,10 +29,9 @@ public class RegistryKey {
 
     @Override
     public String toString() {
-        final StringBuilder sb = new StringBuilder("RegistryKey{\n");
+        final StringBuilder sb = new StringBuilder("RegistryKey:\n");
         sb.append(name).append("\n");
         sb.append(values).append("\n");
-        sb.append('}').append("\n");
         return sb.toString();
     }
 }

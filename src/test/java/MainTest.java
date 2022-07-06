@@ -10,7 +10,7 @@ public class MainTest {
 
     @Test
     public void test1() throws Exception {
-        try (InputStream is = MainTest.class.getResourceAsStream("test3.reg")) {
+        try (InputStream is = MainTest.class.getResourceAsStream("test.reg")) {
             Reader reader = new InputStreamReader(is, StandardCharsets.UTF_16);
             Main.parse(reader);
         }

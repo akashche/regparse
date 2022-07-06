@@ -8,7 +8,34 @@ package regparse;
 
 import java.util.ArrayList;
 
+import static regparse.RegistryType.*;
+
 public class RegFile {
+
+    private static String stripEndEol(String str) {
+        if (str.endsWith("\r\n")) {
+            return str.substring(0, str.length() - 2);
+        } else if (str.endsWith("\n")) {
+            return str.substring(0, str.length() - 1);
+        }
+        throw new RuntimeException("EOL not found, string: [" + str + "]");
+    }
+
+    private static String stripEndQuote(String str) {
+        if (str.endsWith("\"")) {
+            return str.substring(0, str.length() - 1);
+        }
+        throw new RuntimeException("End quote not found, string: [" + str + "]");
+    }
+
+    private static String stripHexEolLenient(String str) {
+        if (!str.contains("\n")) {
+            return str;
+        }
+        String eol = str.contains("\r\n") ? "\r\n" : "\n";
+        return str.replaceAll("\\\\" + eol + "  ", "");
+    }
+
 }
 
 PARSER_END(RegFile)
@@ -18,11 +45,21 @@ TOKEN : { < #NUMBER : ["0" - "9"] > }
 TOKEN : { < HEADER : "Windows Registry Editor Version " (<NUMBER>)+ ( "." | <NUMBER> )* > }
 TOKEN : { < #PRINTABLE : ( ["\u0020" - "\u007e"] | ["\u00a0" - "\ufffd"] ) > }
 TOKEN : { < #PRINTABLE_NO_BACKSLASH : ( ["\u0020" - "\u005b"] | ["\u005d" - "\u007e"] | ["\u00a0" - "\ufffd"] ) > }
-TOKEN : { < #QUOTED : "\"" ( "\\" <PRINTABLE> | ~["\"", "\\", "\r", "\n"] )* "\"" > }
-TOKEN : { < #KEYPART : ( <PRINTABLE_NO_BACKSLASH> )+ > }
-TOKEN : { < KEY : "[" ( <KEYPART> "\\" )* <KEYPART> "]" > }
-TOKEN : { < NAME : <QUOTED> "=" > }
-TOKEN : { < VALUE : <QUOTED> > }
+TOKEN : { < #HEX : ( ["0" - "9"] | ["a" - "f"] ) > }
+TOKEN : { < #HEX_PAIR : ( (<HEX>){2} "," ) > }
+TOKEN : { < #HEX_MULTILINE : (<HEX_PAIR>)* | ( (<HEX_PAIR>)+ "\\" <EOL> (" "){2} )* (<HEX_PAIR>)+ > }
+TOKEN : { < #END_QUOTED : ( "\\" <PRINTABLE> | ~["\"", "\\", "\r", "\n"] )* "\"" > }
+TOKEN : { < #QUOTED : "\"" <END_QUOTED> > }
+TOKEN : { < #KEY_PART : ( <PRINTABLE_NO_BACKSLASH> )+ > }
+TOKEN : { < KEY : "[" ( <KEY_PART> "\\" )* <KEY_PART> "]" > }
+TOKEN : { < NAME : ( <QUOTED> | "@" ) "=" > }
+TOKEN : { < TYPE : ( "\"" | "hex:" | "dword:" | "hex(b):" | "hex(7):" | "hex(2):" ) > }
+TOKEN : { < VALUE_REG_SZ : <END_QUOTED> <EOL> > }
+TOKEN : { < VALUE_REG_BINARY : <HEX_MULTILINE> (<HEX>){2} <EOL> > }
+TOKEN : { < VALUE_REG_DWORD : (<HEX>){8} <EOL> > }
+TOKEN : { < VALUE_REG_QWORD : (<HEX_PAIR>){7} <HEX> <EOL> > }
+TOKEN : { < VALUE_REG_MULTI_SZ: <HEX_MULTILINE> "00" <EOL> > }
+TOKEN : { < VALUE_REG_EXPAND_SZ : <HEX_MULTILINE> "00" <EOL> > }
 
 ArrayList<RegistryKey> parse() :
 {
@@ -38,7 +75,6 @@ ArrayList<RegistryKey> parse() :
         <EOL>
         (
             value = registryValue()
-            <EOL>
             { key.addValue(value); }
         )*
         <EOL>
@@ -65,16 +101,43 @@ RegistryKey registryKey():
 RegistryValue registryValue():
 {
     Token nameToken;
+    Token typeToken;
     Token valueToken;
 }
 {
     nameToken = <NAME>
-    valueToken = <VALUE>
+    typeToken = <TYPE>
+    (
+        valueToken = <VALUE_REG_SZ> |
+        valueToken = <VALUE_REG_BINARY> |
+        valueToken = <EOL> |
+        valueToken = <VALUE_REG_DWORD> |
+        valueToken = <VALUE_REG_QWORD> |
+        valueToken = <VALUE_REG_MULTI_SZ> |
+        valueToken = <VALUE_REG_EXPAND_SZ>
+    )
     {
         String nameQuoted = nameToken.image;
-        String name = nameQuoted.substring(1, nameQuoted.length() - 2);
-        String valueQuoted = valueToken.image;
-        String value = valueQuoted.substring(1, valueQuoted.length() - 1);
-        return new RegistryValue(name, value);
+        String name = "@=".equals(nameQuoted) ? ""
+                : nameQuoted.substring(1, nameQuoted.length() - 2);
+        RegistryType type = RegistryType.fromString(typeToken.image);
+        final String valueImage = stripEndEol(valueToken.image);
+        final String value;
+        switch (type) {
+            case REG_SZ:
+                value = stripEndQuote(valueImage);
+                break;
+            case REG_BINARY:
+            case REG_MULTI_SZ:
+            case REG_EXPAND_SZ:
+                value = stripHexEolLenient(valueImage);
+                break;
+            case REG_DWORD:
+            case REG_QWORD:
+                value = valueImage;
+                break;
+            default: throw new RuntimeException("Invalid type: [" + typeToken.image + "]");
+        }
+        return new RegistryValue(name, type, value);
     }
 }
