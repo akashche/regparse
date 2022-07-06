@@ -1,0 +1,80 @@
+options {
+  STATIC = false;
+}
+
+PARSER_BEGIN(RegFile)
+
+package regparse;
+
+import java.util.ArrayList;
+
+public class RegFile {
+}
+
+PARSER_END(RegFile)
+
+TOKEN : { < EOL : "\n" | "\r\n" > }
+TOKEN : { < #NUMBER : ["0" - "9"] > }
+TOKEN : { < HEADER : "Windows Registry Editor Version " (<NUMBER>)+ ( "." | <NUMBER> )* > }
+TOKEN : { < #PRINTABLE : ( ["\u0020" - "\u007e"] | ["\u00a0" - "\ufffd"] ) > }
+TOKEN : { < #PRINTABLE_NO_BACKSLASH : ( ["\u0020" - "\u005b"] | ["\u005d" - "\u007e"] | ["\u00a0" - "\ufffd"] ) > }
+TOKEN : { < #QUOTED : "\"" ( "\\" <PRINTABLE> | ~["\"", "\\", "\r", "\n"] )* "\"" > }
+TOKEN : { < #KEYPART : ( <PRINTABLE_NO_BACKSLASH> )+ > }
+TOKEN : { < KEY : "[" ( <KEYPART> "\\" )* <KEYPART> "]" > }
+TOKEN : { < NAME : <QUOTED> "=" > }
+TOKEN : { < VALUE : <QUOTED> > }
+
+ArrayList<RegistryKey> parse() :
+{
+    RegistryKey key;
+    RegistryValue value;
+}
+{
+    <HEADER><EOL>
+    <EOL>
+    { ArrayList<RegistryKey> keys = new ArrayList<RegistryKey>(); }
+    (
+        key = registryKey()
+        <EOL>
+        (
+            value = registryValue()
+            <EOL>
+            { key.addValue(value); }
+        )*
+        <EOL>
+        { keys.add(key); }
+    )*
+    (<EOL>)*
+    <EOF>
+    { return keys; }
+}
+
+RegistryKey registryKey():
+{
+    Token keyToken;
+}
+{
+    keyToken = <KEY>
+    {
+        String image = keyToken.image;
+        String name = image.substring(1, image.length() - 1);
+        return new RegistryKey(name);
+    }
+}
+
+RegistryValue registryValue():
+{
+    Token nameToken;
+    Token valueToken;
+}
+{
+    nameToken = <NAME>
+    valueToken = <VALUE>
+    {
+        String nameQuoted = nameToken.image;
+        String name = nameQuoted.substring(1, nameQuoted.length() - 2);
+        String valueQuoted = valueToken.image;
+        String value = valueQuoted.substring(1, valueQuoted.length() - 1);
+        return new RegistryValue(name, value);
+    }
+}
