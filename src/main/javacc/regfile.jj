@@ -2,43 +2,16 @@ options {
   STATIC = false;
 }
 
-PARSER_BEGIN(RegFile)
+
+PARSER_BEGIN(RegFileParser)
 
 package regparse;
 
-import java.util.ArrayList;
-
-import static regparse.RegistryType.*;
-
-public class RegFile {
-
-    private static String stripEndEol(String str) {
-        if (str.endsWith("\r\n")) {
-            return str.substring(0, str.length() - 2);
-        } else if (str.endsWith("\n")) {
-            return str.substring(0, str.length() - 1);
-        }
-        throw new RuntimeException("EOL not found, string: [" + str + "]");
-    }
-
-    private static String stripEndQuote(String str) {
-        if (str.endsWith("\"")) {
-            return str.substring(0, str.length() - 1);
-        }
-        throw new RuntimeException("End quote not found, string: [" + str + "]");
-    }
-
-    private static String stripHexEolLenient(String str) {
-        if (!str.contains("\n")) {
-            return str;
-        }
-        String eol = str.contains("\r\n") ? "\r\n" : "\n";
-        return str.replaceAll("\\\\" + eol + "  ", "");
-    }
-
+class RegFileParser {
 }
 
-PARSER_END(RegFile)
+PARSER_END(RegFileParser)
+
 
 TOKEN : { < EOL : "\n" | "\r\n" > }
 TOKEN : { < #NUMBER : ["0" - "9"] > }
@@ -61,7 +34,8 @@ TOKEN : { < VALUE_REG_QWORD : (<HEX_PAIR>){7} <HEX> <EOL> > }
 TOKEN : { < VALUE_REG_MULTI_SZ: <HEX_MULTILINE> "00" <EOL> > }
 TOKEN : { < VALUE_REG_EXPAND_SZ : <HEX_MULTILINE> "00" <EOL> > }
 
-ArrayList<RegistryKey> parse() :
+
+java.util.ArrayList<RegistryKey> parse() :
 {
     RegistryKey key;
     RegistryValue value;
@@ -69,7 +43,7 @@ ArrayList<RegistryKey> parse() :
 {
     <HEADER><EOL>
     <EOL>
-    { ArrayList<RegistryKey> keys = new ArrayList<RegistryKey>(); }
+    { var keys = new java.util.ArrayList<RegistryKey>(); }
     (
         key = registryKey()
         <EOL>
@@ -91,11 +65,7 @@ RegistryKey registryKey():
 }
 {
     keyToken = <KEY>
-    {
-        String image = keyToken.image;
-        String name = image.substring(1, image.length() - 1);
-        return new RegistryKey(name);
-    }
+    { return RegistryKey.fromToken(keyToken); }
 }
 
 RegistryValue registryValue():
@@ -116,28 +86,5 @@ RegistryValue registryValue():
         valueToken = <VALUE_REG_MULTI_SZ> |
         valueToken = <VALUE_REG_EXPAND_SZ>
     )
-    {
-        String nameQuoted = nameToken.image;
-        String name = "@=".equals(nameQuoted) ? ""
-                : nameQuoted.substring(1, nameQuoted.length() - 2);
-        RegistryType type = RegistryType.fromString(typeToken.image);
-        final String valueImage = stripEndEol(valueToken.image);
-        final String value;
-        switch (type) {
-            case REG_SZ:
-                value = stripEndQuote(valueImage);
-                break;
-            case REG_BINARY:
-            case REG_MULTI_SZ:
-            case REG_EXPAND_SZ:
-                value = stripHexEolLenient(valueImage);
-                break;
-            case REG_DWORD:
-            case REG_QWORD:
-                value = valueImage;
-                break;
-            default: throw new RuntimeException("Invalid type: [" + typeToken.image + "]");
-        }
-        return new RegistryValue(name, type, value);
-    }
+    { return RegistryValue.fromTokens(nameToken, typeToken, valueToken); }
 }
