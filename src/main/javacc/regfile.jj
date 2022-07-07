@@ -8,6 +8,19 @@ PARSER_BEGIN(RegFileParser)
 package regparse;
 
 class RegFileParser {
+
+java.util.ArrayList<RegKey> parse() throws RegParseException {
+    try {
+        return registryKeyList();
+    } catch (TokenMgrError e) {
+        throw RegParseException.fromTokenMgrError(e);
+    } catch (ParseException e) {
+        throw RegParseException.fromParseException(e);
+    } catch (RegTokenException e) {
+        throw RegParseException.fromTokenException(e);
+    }
+}
+
 }
 
 PARSER_END(RegFileParser)
@@ -35,15 +48,15 @@ TOKEN : { < VALUE_REG_MULTI_SZ: <HEX_MULTILINE> "00" <EOL> > }
 TOKEN : { < VALUE_REG_EXPAND_SZ : <HEX_MULTILINE> "00" <EOL> > }
 
 
-java.util.ArrayList<RegistryKey> parse() :
+java.util.ArrayList<RegKey> registryKeyList() :
 {
-    RegistryKey key;
-    RegistryValue value;
+    RegKey key;
+    RegValue value;
 }
 {
     <HEADER><EOL>
     <EOL>
-    { var keys = new java.util.ArrayList<RegistryKey>(); }
+    { var keyList = new java.util.ArrayList<RegKey>(); }
     (
         key = registryKey()
         <EOL>
@@ -52,23 +65,23 @@ java.util.ArrayList<RegistryKey> parse() :
             { key.addValue(value); }
         )*
         <EOL>
-        { keys.add(key); }
+        { keyList.add(key); }
     )*
     (<EOL>)*
     <EOF>
-    { return keys; }
+    { return keyList; }
 }
 
-RegistryKey registryKey():
+RegKey registryKey():
 {
     Token keyToken;
 }
 {
     keyToken = <KEY>
-    { return RegistryKey.fromToken(keyToken); }
+    { return RegKey.fromToken(keyToken); }
 }
 
-RegistryValue registryValue():
+RegValue registryValue():
 {
     Token nameToken;
     Token typeToken;
@@ -78,13 +91,13 @@ RegistryValue registryValue():
     nameToken = <NAME>
     typeToken = <TYPE>
     (
-        valueToken = <VALUE_REG_SZ> |
-        valueToken = <VALUE_REG_BINARY> |
-        valueToken = <EOL> |
-        valueToken = <VALUE_REG_DWORD> |
-        valueToken = <VALUE_REG_QWORD> |
+        valueToken = <VALUE_REG_SZ>       |
+        valueToken = <VALUE_REG_BINARY>   |
+        valueToken = <EOL>                |
+        valueToken = <VALUE_REG_DWORD>    |
+        valueToken = <VALUE_REG_QWORD>    |
         valueToken = <VALUE_REG_MULTI_SZ> |
         valueToken = <VALUE_REG_EXPAND_SZ>
     )
-    { return RegistryValue.fromTokens(nameToken, typeToken, valueToken); }
+    { return RegValue.fromTokens(nameToken, typeToken, valueToken); }
 }

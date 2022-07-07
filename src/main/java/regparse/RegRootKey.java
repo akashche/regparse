@@ -2,7 +2,7 @@ package regparse;
 
 import java.util.Arrays;
 
-public enum RegistryRoot {
+public enum RegRootKey {
     HKMU("HKEY_WIX_HKMU"),
     HKCR("HKEY_CLASSES_ROOT"),
     HKCU("HKEY_CURRENT_USER"),
@@ -11,14 +11,15 @@ public enum RegistryRoot {
 
     private final String value;
 
-    RegistryRoot(String value) {
+    RegRootKey(String value) {
         this.value = value;
     }
 
-    public static RegistryRoot fromString(String str) throws RuntimeException {
-        return Arrays.stream(RegistryRoot.values())
+    public static RegRootKey fromString(Token token, String str) {
+        return Arrays.stream(RegRootKey.values())
                 .filter(v -> v.value.equals(str))
                 .findFirst()
-                .orElseThrow(() -> new RuntimeException("Unknown value: [" + str + "]"));
+                .orElseThrow(() -> new RegTokenException(token, String.format(
+                        "Invalid root key value specified: %s", str)));
     }
 }

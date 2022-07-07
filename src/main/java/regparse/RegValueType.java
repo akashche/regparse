@@ -2,7 +2,7 @@ package regparse;
 
 import java.util.Arrays;
 
-public enum RegistryType {
+public enum RegValueType {
     REG_SZ("\""),
     REG_BINARY("hex:"),
     REG_DWORD("dword:"),
@@ -12,14 +12,15 @@ public enum RegistryType {
 
     private final String value;
 
-    RegistryType(String value) {
+    RegValueType(String value) {
         this.value = value;
     }
 
-    public static RegistryType fromString(String str) throws RuntimeException {
-        return Arrays.stream(RegistryType.values())
+    public static RegValueType fromString(Token token, String str) {
+        return Arrays.stream(RegValueType.values())
                 .filter(v -> v.value.equals(str))
                 .findFirst()
-                .orElseThrow(() -> new RuntimeException("Unknown value: [" + str + "]"));
+                .orElseThrow(() -> new RegTokenException(token, String.format(
+                "Invalid value type specified: %s", str)));
     }
 }

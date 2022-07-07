@@ -2,20 +2,21 @@ package regparse;
 
 import java.util.regex.Pattern;
 
-public class RegistryValue {
-    private RegistryValue(String name, RegistryType type, String value) {
+public class RegValue {
+    private RegValue(String name, RegValueType type, String value) {
         this.name = name;
         this.type = type;
         this.value = value;
     }
 
-    static RegistryValue fromTokens(Token nameToken, Token typeToken, Token valueToken) {
+    static RegValue fromTokens(Token nameToken, Token typeToken, Token valueToken) {
         String name = nameFromToken(nameToken);
-        RegistryType type = RegistryType.fromString(typeToken.image);
-        String value = valueFromToken(valueToken, type);
-        return new RegistryValue(name, type, value);
+        RegValueType type = RegValueType.fromString(typeToken, typeToken.image);
+        String value = valueFromToken(type, valueToken);
+        return new RegValue(name, type, value);
     }
 
+    // todo: fixme
     @Override
     public String toString() {
         final StringBuilder sb = new StringBuilder();
@@ -35,12 +36,14 @@ public class RegistryValue {
                     token.image.length() - QUOTED_NAME_SUFFIX.length());
         }
         if (name.length() > MAX_NAME_LENGTH) {
-            throw new RuntimeException("Invalid value name TODO");
+            throw new RegTokenException(token, String.format(
+                    "Registry value name length: %d exceeds max allowed length: %d",
+                    name.length(), MAX_NAME_LENGTH));
         }
         return name;
     }
 
-    private static String valueFromToken(Token token, RegistryType type) {
+    private static String valueFromToken(RegValueType type, Token token) {
         // example: 'my string value"<EOL>'
         final int eolLength;
         if (token.image.endsWith(EOL_CR_LF)) {
@@ -48,7 +51,7 @@ public class RegistryValue {
         } else if (token.image.endsWith(EOL_LF)) {
             eolLength = EOL_LF.length();
         } else {
-            throw new RuntimeException("TODO");
+            throw new RegTokenException(token, "Registry value EOL error");
         }
         final String valueImage = token.image
                 .substring(0, token.image.length() - eolLength);
@@ -67,12 +70,13 @@ public class RegistryValue {
             case REG_QWORD: // example: 0000002a
                 return valueImage;
             default:
-                throw new RuntimeException("TODO");
+                throw new RegTokenException(token, String.format(
+                        "Registry value type: %d is not supported", type));
         }
     }
 
     private final String name;
-    private final RegistryType type;
+    private final RegValueType type;
     private final String value;
 
     private static final int MAX_NAME_LENGTH = 16383;
