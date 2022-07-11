@@ -1,8 +1,10 @@
-package regparse;
+package regfile;
+
+import regfile.parser.Token;
 
 import java.util.Arrays;
 
-public enum RegValueType {
+public enum RegFileValueType {
     REG_SZ("\""),
     REG_BINARY("hex:"),
     REG_DWORD("dword:"),
@@ -12,15 +14,15 @@ public enum RegValueType {
 
     private final String value;
 
-    RegValueType(String value) {
+    RegFileValueType(String value) {
         this.value = value;
     }
 
-    public static RegValueType fromString(Token token, String str) {
-        return Arrays.stream(RegValueType.values())
+    public static RegFileValueType fromString(Token token, String str) {
+        return Arrays.stream(RegFileValueType.values())
                 .filter(v -> v.value.equals(str))
                 .findFirst()
-                .orElseThrow(() -> new RegTokenException(token, String.format(
+                .orElseThrow(() -> new RegFileTokenException(token, String.format(
                 "Invalid value type specified: %s", str)));
     }
 }

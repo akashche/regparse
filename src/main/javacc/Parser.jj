@@ -3,27 +3,34 @@ options {
 }
 
 
-PARSER_BEGIN(RegFileParser)
+PARSER_BEGIN(Parser)
 
-package regparse;
+package regfile.parser;
 
-class RegFileParser {
+import java.util.ArrayList;
 
-java.util.ArrayList<RegKey> parse() throws RegParseException {
+import regfile.RegFileKey;
+import regfile.RegFileParseException;
+import regfile.RegFileTokenException;
+import regfile.RegFileValue;
+
+public class Parser {
+
+public ArrayList<RegFileKey> parse() throws RegFileParseException {
     try {
         return registryKeyList();
     } catch (TokenMgrError e) {
-        throw RegParseException.fromTokenMgrError(e);
+        throw RegFileParseException.fromTokenMgrError(e);
     } catch (ParseException e) {
-        throw RegParseException.fromParseException(e);
-    } catch (RegTokenException e) {
-        throw RegParseException.fromTokenException(e);
+        throw RegFileParseException.fromParseException(e);
+    } catch (RegFileTokenException e) {
+        throw RegFileParseException.fromTokenException(e);
     }
 }
 
 }
 
-PARSER_END(RegFileParser)
+PARSER_END(Parser)
 
 
 TOKEN : { < EOL : "\n" | "\r\n" > }
@@ -48,15 +55,15 @@ TOKEN : { < VALUE_REG_MULTI_SZ: <HEX_MULTILINE> "00" <EOL> > }
 TOKEN : { < VALUE_REG_EXPAND_SZ : <HEX_MULTILINE> "00" <EOL> > }
 
 
-java.util.ArrayList<RegKey> registryKeyList() :
+ArrayList<RegFileKey> registryKeyList() :
 {
-    RegKey key;
-    RegValue value;
+    RegFileKey key;
+    RegFileValue value;
 }
 {
     <HEADER><EOL>
     <EOL>
-    { var keyList = new java.util.ArrayList<RegKey>(); }
+    { ArrayList<RegFileKey> keyList = new ArrayList<>(); }
     (
         key = registryKey()
         <EOL>
@@ -72,16 +79,16 @@ java.util.ArrayList<RegKey> registryKeyList() :
     { return keyList; }
 }
 
-RegKey registryKey():
+RegFileKey registryKey():
 {
     Token keyToken;
 }
 {
     keyToken = <KEY>
-    { return RegKey.fromToken(keyToken); }
+    { return RegFileKey.fromToken(keyToken); }
 }
 
-RegValue registryValue():
+RegFileValue registryValue():
 {
     Token nameToken;
     Token typeToken;
@@ -99,5 +106,5 @@ RegValue registryValue():
         valueToken = <VALUE_REG_MULTI_SZ> |
         valueToken = <VALUE_REG_EXPAND_SZ>
     )
-    { return RegValue.fromTokens(nameToken, typeToken, valueToken); }
+    { return RegFileValue.fromTokens(nameToken, typeToken, valueToken); }
 }

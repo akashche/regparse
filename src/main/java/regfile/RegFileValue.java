@@ -1,19 +1,21 @@
-package regparse;
+package regfile;
+
+import regfile.parser.Token;
 
 import java.util.regex.Pattern;
 
-public class RegValue {
-    private RegValue(String name, RegValueType type, String value) {
+public class RegFileValue {
+    private RegFileValue(String name, RegFileValueType type, String value) {
         this.name = name;
         this.type = type;
         this.value = value;
     }
 
-    static RegValue fromTokens(Token nameToken, Token typeToken, Token valueToken) {
+    public static RegFileValue fromTokens(Token nameToken, Token typeToken, Token valueToken) {
         String name = nameFromToken(nameToken);
-        RegValueType type = RegValueType.fromString(typeToken, typeToken.image);
+        RegFileValueType type = RegFileValueType.fromString(typeToken, typeToken.image);
         String value = valueFromToken(type, valueToken);
-        return new RegValue(name, type, value);
+        return new RegFileValue(name, type, value);
     }
 
     // todo: fixme
@@ -36,14 +38,14 @@ public class RegValue {
                     token.image.length() - QUOTED_NAME_SUFFIX.length());
         }
         if (name.length() > MAX_NAME_LENGTH) {
-            throw new RegTokenException(token, String.format(
+            throw new RegFileTokenException(token, String.format(
                     "Registry value name length: %d exceeds max allowed length: %d",
                     name.length(), MAX_NAME_LENGTH));
         }
         return name;
     }
 
-    private static String valueFromToken(RegValueType type, Token token) {
+    private static String valueFromToken(RegFileValueType type, Token token) {
         // example: 'my string value"<EOL>'
         final int eolLength;
         if (token.image.endsWith(EOL_CR_LF)) {
@@ -51,7 +53,7 @@ public class RegValue {
         } else if (token.image.endsWith(EOL_LF)) {
             eolLength = EOL_LF.length();
         } else {
-            throw new RegTokenException(token, "Registry value EOL error");
+            throw new RegFileTokenException(token, "Registry value EOL error");
         }
         final String valueImage = token.image
                 .substring(0, token.image.length() - eolLength);
@@ -70,13 +72,13 @@ public class RegValue {
             case REG_QWORD: // example: 0000002a
                 return valueImage;
             default:
-                throw new RegTokenException(token, String.format(
+                throw new RegFileTokenException(token, String.format(
                         "Registry value type: %d is not supported", type));
         }
     }
 
     private final String name;
-    private final RegValueType type;
+    private final RegFileValueType type;
     private final String value;
 
     private static final int MAX_NAME_LENGTH = 16383;

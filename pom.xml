@@ -59,7 +59,7 @@
                     </execution>
                 </executions>
                 <configuration>
-                    <packageName>regparse</packageName>
+                    <packageName>regfile.parser</packageName>
                 </configuration>
             </plugin>
         </plugins>

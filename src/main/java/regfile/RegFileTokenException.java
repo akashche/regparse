@@ -1,8 +1,10 @@
-package regparse;
+package regfile;
 
-public class RegTokenException extends RuntimeException {
+import regfile.parser.Token;
 
-    public RegTokenException(Token token, String message) {
+public class RegFileTokenException extends RuntimeException {
+
+    public RegFileTokenException(Token token, String message) {
         this.token = token;
         this.message = message;
     }

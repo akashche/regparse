@@ -1,5 +1,5 @@
 import org.junit.jupiter.api.Test;
-import regparse.Main;
+import regfile.Main;
 
 import java.io.InputStream;
 import java.io.InputStreamReader;
