@@ -18,14 +18,16 @@ public class RegFileValue {
         return new RegFileValue(name, type, value);
     }
 
-    // todo: fixme
-    @Override
-    public String toString() {
-        final StringBuilder sb = new StringBuilder();
-        sb.append(name).append(":");
-        sb.append(type).append(":");
-        sb.append(value).append("\n");
-        return sb.toString();
+    public String getName() {
+        return name;
+    }
+
+    public RegFileValueType getType() {
+        return type;
+    }
+
+    public String getValue() {
+        return value;
     }
 
     private static String nameFromToken(Token token) {
@@ -33,9 +35,13 @@ public class RegFileValue {
         final String name;
         if (DEFAULT_NAME.equals(token.image)) {
             name = "";
-        } else {
+        } else if (token.image.startsWith(DOUBLE_QUOTE) &&
+                token.image.endsWith(QUOTED_NAME_SUFFIX)) {
             name = token.image.substring(DOUBLE_QUOTE.length(),
                     token.image.length() - QUOTED_NAME_SUFFIX.length());
+        } else {
+            throw new RegFileTokenException(token,
+                    "Registry value name image is invalid");
         }
         if (name.length() > MAX_NAME_LENGTH) {
             throw new RegFileTokenException(token, String.format(
@@ -53,7 +59,8 @@ public class RegFileValue {
         } else if (token.image.endsWith(EOL_LF)) {
             eolLength = EOL_LF.length();
         } else {
-            throw new RegFileTokenException(token, "Registry value EOL error");
+            throw new RegFileTokenException(token,
+                    "Registry value image is invalid");
         }
         final String valueImage = token.image
                 .substring(0, token.image.length() - eolLength);

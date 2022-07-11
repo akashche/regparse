@@ -5,7 +5,6 @@ import java.util.Arrays;
 
 import regfile.parser.Token;
 
-import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toCollection;
 
 public class RegFileKey {
@@ -18,6 +17,10 @@ public class RegFileKey {
 
     public static RegFileKey fromToken(Token token) {
         // example: [root\path\to\key]
+        if (!(token.image.startsWith("[") && token.image.endsWith("]"))) {
+            throw new RegFileTokenException(token,
+                    "Registry key image is invalid");
+        }
         String fullPath = token.image.substring(1, token.image.length() - 1);
         String[] parts = fullPath.split("\\\\");
         if (parts.length < 2) {
@@ -46,15 +49,16 @@ public class RegFileKey {
         this.values.add(value);
     }
 
-    // todo: fixme
-    @Override
-    public String toString() {
-        final StringBuilder sb = new StringBuilder("RegistryKey:\n");
-        sb.append(root).append("\n");
-        sb.append(pathParts.stream()
-                .collect(joining("\\"))).append("\n");
-        sb.append(values).append("\n");
-        return sb.toString();
+    public RegFileRootKey getRoot() {
+        return root;
+    }
+
+    public ArrayList<String> getPathParts() {
+        return pathParts;
+    }
+
+    public ArrayList<RegFileValue> getValues() {
+        return values;
     }
 
     private final RegFileRootKey root;
